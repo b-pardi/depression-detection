@@ -41,13 +41,14 @@ There are 3 commands that can be entered in the chat at any point:
 
 ## File Structure
 
+```bash
 depression-detection (root)/
 ├── configs/                            # contains config dataclasses with global objects of those classes for each param changing/passing
 │   ├── chat_model_config.py            # params for configuring the llm chat bot (frontend)
 │   ├── path_model_config.py            # paths and filenames
 │   ├── retrieval_model_config.py       # params for configuring the RaG llm (backend)
 ├── ctx/                                # contains all system message text files for llms
-│   ├── sys_msg.txt/                    # chat bot context
+│   ├── sys_msg.txt                     # chat bot context
 ├── data/
 │   ├── stuff/                          
 │   │   ├── temp
@@ -60,7 +61,7 @@ depression-detection (root)/
 │   ├── Meta-Llama-3-8B-Instruct.Q8_0.gguf  
 ├── output/                             # where llm's skill selections are output. 
 │   ├── chat_logs/
-│       ├── <model-datetime>/           # output chat logs from the chosen llama model 
+│       ├── <model-datetime>            # output chat logs from the chosen llama model 
 ├── utils/ 
 │   ├── __init__.py             
 │   ├── initializers.py                 # setup fns
@@ -70,3 +71,4 @@ depression-detection (root)/
 ├── LICENSE
 ├── README.md
 ├── requirements.txt
+```
