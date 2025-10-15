@@ -1,3 +1,31 @@
+# Project Specific
+# ignore files in dir but keep dir structure with `dir/*` & `!dir/.gitkeep 
+models/*
+!models/PLACE_LLAMA_MODELS_HERE
+
+output/*
+!output/.gitkeep
+
+data/*
+!data/.gitkeep
+
+
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+.env
+.vscode/launch.json
+.vscode/settings.json
+.coverage
+coverage.lcov
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
