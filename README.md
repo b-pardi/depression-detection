@@ -27,7 +27,6 @@ See `clinical_dataset/metadata.json` for complete citations.
 
 **Test Data:**
 - **DIAC-WOZ** - Clinical dialogue dataset (unseen test data)
-- **Social Media** - Naturalistic text analysis
 
 **Experiments:**
 - `clinical_rag.ipynb` - Main RAG system evaluation
