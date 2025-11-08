@@ -1,15 +1,12 @@
-# depression-detection
+# Depression Detection via RAG
 Do you write code? Do you have depression??? Us too :)
 
-# Depression Detection via RAG
-
-A clinical decision support system using Retrieval-Augmented Generation (RAG) for depression diagnosis based on DSM-5-TR and ICD-11 diagnostic criteria.
 
 > **Note:** This is an academic research project. Not intended for clinical use.
 
 ## Overview
 
-This system combines authoritative clinical materials (DSM-5-TR, ICD-11, APA practice guidelines) with LLMs to demonstrate how RAG can support structured diagnostic assessment for depression and mood disorders.
+This system combines authoritative clinical materials (DSM-5-TR, ICD-11, APA practice guidelines) with LLMs to demonstrate how RAG can support structured diagnostic assessment for depression and mood disorders. And if our hypothesis is correct, prove that the clinical RAG outperforms social media based models. 
 
 ## Clinical Dataset
 
@@ -28,10 +25,13 @@ See `clinical_dataset/metadata.json` for complete citations.
 **Test Data:**
 - **DIAC-WOZ** - Clinical dialogue dataset (unseen test data)
 
-**Experiments/models:**
-- `clinical_rag.ipynb` - Main RAG system
-- `comparison.ipynb` - Model and strategy comparisons
-- `social_media.ipynb` - Social media classification model
+**Notebooks:**
+```bash
+jupyter notebook clinical_rag.ipynb    # RAG system
+jupyter notebook comparison.ipynb      # Comparisons
+jupyter notebook social_media.ipynb    # Social media fine-tunes model
+```
+
 
 ## Setup
 
@@ -73,19 +73,7 @@ pip install --upgrade --force-reinstall --no-cache-dir llama-cpp-python
 
 5. Place GGUF models in `models/` directory
 
-## Usage
 
-**Notebooks:**
-```bash
-jupyter notebook clinical_rag.ipynb    # Main system
-jupyter notebook comparison.ipynb      # Comparisons
-jupyter notebook social_media.ipynb    # Social media analysis
-```
-
-**CLI:**
-```bash
-python main.py
-```
 
 ## File Structure
 ```bash
