@@ -28,10 +28,10 @@ See `clinical_dataset/metadata.json` for complete citations.
 **Test Data:**
 - **DIAC-WOZ** - Clinical dialogue dataset (unseen test data)
 
-**Experiments:**
-- `clinical_rag.ipynb` - Main RAG system evaluation
+**Experiments/models:**
+- `clinical_rag.ipynb` - Main RAG system
 - `comparison.ipynb` - Model and strategy comparisons
-- `social_media.ipynb` - Social media text analysis
+- `social_media.ipynb` - Social media classification model
 
 ## Setup
 
