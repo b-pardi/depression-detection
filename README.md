@@ -1,74 +1,158 @@
 # depression-detection
 Do you write code? Do you have depression??? Us too :)
 
-## Setup and Run
+# Depression Detection via RAG
 
-1. Download llama models variants and put them in the `models/` folder
-These can be found at various huggingface repos such as:
+A clinical decision support system using Retrieval-Augmented Generation (RAG) for depression diagnosis based on DSM-5-TR and ICD-11 diagnostic criteria.
 
-- 3.2: https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-uncensored-GGUF
-- 3.1: https://huggingface.co/bartowski/DarkIdol-Llama-3.1-8B-Instruct-1.2-Uncensored-GGUF
+> **Note:** This is an academic research project. Not intended for clinical use.
 
-2. Change the `model_fn` attr of the Config dataclass found in `configs/path_config.py` to match the llama variant downloaded. The default (and currently only one tested) variant is `Llama-3.2-3B-Instruct-Q8_0.gguf`
+## Overview
 
-3. Classic venv stuff:
+This system combines authoritative clinical materials (DSM-5-TR, ICD-11, APA practice guidelines) with LLMs to demonstrate how RAG can support structured diagnostic assessment for depression and mood disorders.
 
+## Clinical Dataset
+
+Our RAG is built on authoritative clinical materials:
+
+- **DSM-5-TR** (2022) - Primary diagnostic criteria
+- **ICD-11** (2024) - International diagnostic standard
+- **APA Practice Guidelines** - Major Depressive Disorder (2010), Bipolar Disorder (2010), Depression Across Age Cohorts (2019)
+- **SCID-5** (2016) - Structured Clinical Interview
+- **WHO Depression Materials** (2025) - Patient-facing descriptions
+
+See `clinical_dataset/metadata.json` for complete citations.
+
+## Evaluation
+
+**Test Data:**
+- **DIAC-WOZ** - Clinical dialogue dataset (unseen test data)
+- **Social Media** - Naturalistic text analysis
+
+**Experiments:**
+- `clinical_rag.ipynb` - Main RAG system evaluation
+- `comparison.ipynb` - Model and strategy comparisons
+- `social_media.ipynb` - Social media text analysis
+
+## Setup
+
+### Prerequisites
+- Python 3.10+ (tested with 3.10.6)
+- CUDA-capable GPU (optional, recommended)
+
+### Installation
+
+1. Clone and navigate to repository
+
+2. Create virtual environment:
 ```bash
 python -m venv venv
-.\venv\Scripts\activate     # WINDOWS
-source ./venv/bin/activate  # MAC/LINUX
+
+# Windows
+.\venv\Scripts\activate
+
+# Mac/Linux
+source ./venv/bin/activate
+```
+
+3. Install dependencies:
+```bash
 pip install -r requirements.txt
 ```
 
-4. GPU support (optional): 
-To enable GPU support one _may_ need to export an environment variable and force a rebuild of llama_cpp.
-**Note:** The reinstall command will take quite a while, if it looks like it froze, just let it keep going for up to 1-2 hrs.
-- `$env:CMAKE_ARGS="-DGGML_CUDA=on"` OR Linux: `CMAKE_ARGS="-DGGML_CUDA=on"`
-- `pip install --upgrade --force-reinstall --no-cache-dir llama-cpp-python`
+4. **(Optional)** Enable GPU support:
+```bash
+# Windows
+$env:CMAKE_ARGS="-DGGML_CUDA=on"
 
-**Note:** Current methods tested with Python 3.10.6, however it is likely to still work with other versions (e.g. 3.12.x) as well, though not tested.
+# Mac/Linux
+export CMAKE_ARGS="-DGGML_CUDA=on"
 
+# Reinstall with CUDA (takes 1-2 hours)
+pip install --upgrade --force-reinstall --no-cache-dir llama-cpp-python
+```
 
-## Chat Usage
-After all initial setup is complete, simply run `python main.py` to begin with the chatbot.
-Converse with it as desired, there is currently a barebones job description in `ctx/sys_msg.txt` that you can read to see what it's trying to do.
-There are 3 commands that can be entered in the chat at any point:
+5. Place GGUF models in `models/` directory
 
-- `/exit` or `/quit`: closes the chatbot without saving
-- `/reset`: wipes the slate clean and removes all chat history (that wasn't saved already) from the current conversation
-- `/save`: save the chat log to `output/chat_logs/<config.model_fn-datetime>.jsonl`
+## Usage
 
+**Notebooks:**
+```bash
+jupyter notebook clinical_rag.ipynb    # Main system
+jupyter notebook comparison.ipynb      # Comparisons
+jupyter notebook social_media.ipynb    # Social media analysis
+```
+
+**CLI:**
+```bash
+python main.py
+```
 
 ## File Structure
-
 ```bash
-depression-detection (root)/
-├── configs/                            # contains config dataclasses with global objects of those classes for each param changing/passing
-│   ├── chat_model_config.py            # params for configuring the llm chat bot (frontend)
-│   ├── path_model_config.py            # paths and filenames
-│   ├── retrieval_model_config.py       # params for configuring the RaG llm (backend)
-├── ctx/                                # contains all system message text files for llms
-│   ├── sys_msg.txt                     # chat bot context
+depression-detection/
+├── clinical_dataset/                   # Clinical materials for RAG
+│   ├── metadata.json                   
+│   ├── DSM-5-TR.pdf
+│   ├── APA_MDD_Guideline.pdf
+│   ├── APA_Bipolar_Guideline.pdf
+│   ├── APA_Depression_Age_Cohorts.pdf
+│   ├── ICD-11_Mental_Behavioral.pdf
+│   ├── SCID-5.pdf
+│   └── WHO_Depression_Factsheet.pdf
+├── configs/                            # Configuration files
+│   ├── chat_model_config.py            
+│   ├── path_model_config.py            
+│   └── retrieval_model_config.py       
+├── ctx/                                # System prompts
+│   └── sys_msg.txt                     
 ├── data/
-│   ├── stuff/                          
-│   │   ├── temp
-├── llm_scripts/                        # scripts for llm use/interaction
+│   └── stuff/                          
+│       └── temp/
+├── llm_scripts/                        # LLM modules
 │   ├── __init__.py             
-│   ├── chat_llm.py                     # contains methods and llama_cpp wrapper class for chat bot
-├── models/                             # where downloaded llama model variants are placed (ex below)
+│   └── chat_llm.py                     
+├── models/                             # LLaMA models
 │   ├── PLACE_LLAMA_MODELS_HERE   
 │   ├── Llama-3.2-3B-Instruct-Q8_0.gguf   
-│   ├── Meta-Llama-3-8B-Instruct.Q8_0.gguf  
-├── output/                             # where llm's skill selections are output. 
-│   ├── chat_logs/
-│       ├── <model-datetime>            # output chat logs from the chosen llama model 
+│   └── Meta-Llama-3-8B-Instruct.Q8_0.gguf  
+├── output/                             # Generated outputs
+│   └── chat_logs/
+│       └── <model-datetime>/            
 ├── utils/ 
 │   ├── __init__.py             
-│   ├── initializers.py                 # setup fns
+│   └── initializers.py                 
 ├── venv/
-├── main.py                             # entry point
+├── clinical_rag.ipynb                  # Main RAG evaluation
+├── comparison.ipynb                    # Model comparisons
+├── social_media.ipynb                  # Social media analysis
+├── main.py                             # CLI entry point
 ├── .gitignore
 ├── LICENSE
 ├── README.md
-├── requirements.txt
+└── requirements.txt
 ```
+
+## Disclaimers
+
+**This is a research prototype:**
+- NOT for clinical diagnosis or patient care
+- NOT a substitute for professional evaluation
+- Depression diagnosis requires trained clinical professionals
+- Outputs are demonstrations of RAG technology only
+
+## References
+
+Complete citations in `clinical_dataset/metadata.json`
+
+Key sources:
+- American Psychiatric Association. (2022). *DSM-5-TR*
+- World Health Organization. (2024). *ICD-11*
+- Fiest et al. (2014). Validated case definitions for depression. *BMC Psychiatry*, 14, 289.
+
+---
+
+**Crisis Resources:**
+- **US:** National Suicide Prevention Lifeline: 988
+- **US:** Crisis Text Line: Text HOME to 741741
+- **International:** https://www.iasp.info/resources/Crisis_Centres/
