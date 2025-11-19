@@ -6,8 +6,14 @@ models/*
 output/*
 !output/.gitkeep
 
-data/*
-!data/.gitkeep
+# keep folders for data, but don't commit the data
+data/social_media_posts/*
+data/Clinical_data/*
+!data/social_media_posts/.gitkeep
+!data/Clinical_data/.gitkeep
+
+logs/*
+
 
 
 # Python-generated files

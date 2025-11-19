@@ -36,44 +36,45 @@ jupyter notebook social_media.ipynb    # Social media fine-tunes model
 ## Setup
 
 ### Prerequisites
-- Python 3.10+ (tested with 3.10.6)
+- Python 3.13+ (tested with 3.13.9)
 - CUDA-capable GPU (optional, recommended)
 
 ### Installation
 
 1. Clone and navigate to repository
 
-2. Create virtual environment:
+2. Create virtual environment (conda recommended):
 ```bash
-python -m venv venv
-
-# Windows
-.\venv\Scripts\activate
-
-# Mac/Linux
-source ./venv/bin/activate
+conda create --name myenv python=3.13
+conda activate myenv
 ```
 
 3. Install dependencies:
 ```bash
-pip install -r requirements.txt
+conda install --file requirements.txt
 ```
 
-4. **(Optional)** Enable GPU support:
-```bash
-# Windows
-$env:CMAKE_ARGS="-DGGML_CUDA=on"
+### Fine Tuning
+1. Request access for and download Llama models from the [Official Meta Llama Downloads Website](https://www.llama.com/llama-downloads/). **Note:** the Llama model used for this project specifically is Llama-3.2-3B-Instruct, and further instructions pertain to that version.
 
-# Mac/Linux
-export CMAKE_ARGS="-DGGML_CUDA=on"
+2. Convert Llama weights to hugging face format.
+```
+python /fine_tuning/convert_llama_weights_to_hf.py    --input_dir "/path/to/llama/weights/folder"   --model_size 3B   --output_dir "/path/to/desired/converted/weights/folder"   --llama_version 3.2   --safe_serialization
 
-# Reinstall with CUDA (takes 1-2 hours)
-pip install --upgrade --force-reinstall --no-cache-dir llama-cpp-python
+# EXAMPLE
+python /fine_tuning/convert_llama_weights_to_hf.py    --input_dir "/mnt/c/Users/BPardi/.llama/checkpoints/Llama3.2-3B-Instruct"   --model_size 3B   --output_dir "/mnt/c/Users/BPardi/.llama/hf/Llama-3.2-3B-Instruct"   --llama_version 3.2   --safe_serialization
 ```
 
-5. Place GGUF models in `models/` directory
+**Note:** The transformers library supposedly ships with this script, but it didn't for me so I included it in this repo. Additionally there were several issues with this script pertaining to deprecated args that I had to remedy.
 
+3. [Download datasets train.csv and test.csv](https://github.com/rafalposwiata/depression-detection-lt-edi-2022/tree/main/data/preprocessed_dataset) and place them in the `data/social_media_posts_folder`
 
+4. Update `configs/fine_tune_config.py` as desired. The only parameter that _needs_ to be updated is the `FineTuningConfig.base_llm_dir` from step 1.
+
+5. Run `python fine_tune.py`
+
+Tips:
+- If your GPU VRAM and utilization are near maximum and training appears stalled for a few minutes, decrease `tuner_cfg['per_device_train_batch_size]` and `tuner_cfg['per_device_eval_batch_size]`. Increase `tuner_cfg['gradient_accumulation_steps]` by the same factor the batch sizes were reduced to maintain the same number of gradient steps per epoch.
 
 ## File Structure
 ```bash
@@ -87,6 +88,9 @@ depression-detection/
 │   ├── ICD-11_Mental_Behavioral.pdf
 │   ├── SCID-5.pdf
 │   └── WHO_Depression_Factsheet.pdf
+├── clinical_dataset/                   # Social Media posts labelled with depression levels
+│   ├── test.csv                   
+│   ├── train.csv                   
 ├── configs/                            # Configuration files
 │   ├── chat_model_config.py            
 │   ├── path_model_config.py            
@@ -96,24 +100,14 @@ depression-detection/
 ├── data/
 │   └── stuff/                          
 │       └── temp/
-├── llm_scripts/                        # LLM modules
+├── fine_tuning/                        # Scripts for fine tuning on social media posts
 │   ├── __init__.py             
-│   └── chat_llm.py                     
-├── models/                             # LLaMA models
-│   ├── PLACE_LLAMA_MODELS_HERE   
-│   ├── Llama-3.2-3B-Instruct-Q8_0.gguf   
-│   └── Meta-Llama-3-8B-Instruct.Q8_0.gguf  
-├── output/                             # Generated outputs
-│   └── chat_logs/
-│       └── <model-datetime>/            
-├── utils/ 
-│   ├── __init__.py             
-│   └── initializers.py                 
-├── venv/
+│   └── chat_llm.py                      
+├── logs/                               # Training/Evaluation outputs                         
 ├── clinical_rag.ipynb                  # Main RAG evaluation
 ├── comparison.ipynb                    # Model comparisons
 ├── social_media.ipynb                  # Social media analysis
-├── main.py                             # CLI entry point
+├── fine_tune.py                        # CLI entry point for running fine tuning on social media posts
 ├── .gitignore
 ├── LICENSE
 ├── README.md
