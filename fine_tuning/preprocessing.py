@@ -1,0 +1,139 @@
+import torch
+import random
+import pandas as pd
+import numpy as np
+from peft import AutoPeftModelForCausalLM
+from transformers import AutoTokenizer
+from sklearn.metrics import accuracy_score, f1_score, classification_report, confusion_matrix
+from datasets import Dataset
+
+def build_prompt(ctx, text, label=None):
+    prompt = f"{ctx}Post:\n{text}\n\nAnswer:"
+    if label is not None: # label included when training
+        prompt += " " + str(label)
+    return prompt
+
+def tokenize_labels(tokenizer, labels_list):
+    label_tokens = []
+    for label_int in labels_list:
+        label_token = tokenizer.encode(str(label_int), add_special_tokens=False)[0]
+        label_tokens.append(label_token)
+    return label_tokens
+
+def get_max_token_len(df, ctx, tokenizer, text_col, label_col, include_percent=0.98):
+    lens = []
+    for text, label in zip(df[text_col], df[label_col]):
+        prompt = build_prompt(ctx, text, label)
+        tokens = tokenizer(prompt, add_special_tokens=False)['input_ids']
+        lens.append(len(tokens))
+    
+    lens = np.array(lens)
+    print(np.sort(lens))
+    return int(np.percentile(lens, include_percent * 100))
+
+def filter_samples_over_max_len(tokenizer, ctx, df, text_col, label_col, max_token_len=512):
+    keep_idxs = []
+    for i, (text, label) in enumerate(zip(df[text_col], df[label_col])):
+        prompt = build_prompt(ctx, text, label)
+        n_tokens = len(tokenizer(prompt, add_special_tokens=False)['input_ids'])
+        if n_tokens <= max_token_len:
+            keep_idxs.append(i)
+
+    filtered_df = df.iloc[keep_idxs].reset_index(drop=True)
+    print(f"Removed {len(df) - len(filtered_df)} samples; {len(filtered_df)} samples remaining out of {len(df)} initially.")
+
+    return filtered_df
+
+def oversample_minority(df, text_col, label_col, drop_prob=0.1, excl_words=None, random_state=42):
+    # sample with replacement for minority classes
+    label_counts = df[label_col].value_counts()
+    max_count = label_counts.max()
+
+    dfs = [df] # og samples
+    for label, count in label_counts.items():
+        if count == max_count: # dont oversample the majority class
+            continue
+
+        n_diff = max_count - count 
+        df_label = df[df[label_col] == label]            
+        df_sampled = df_label.sample(n=n_diff, replace=True, random_state=random_state)
+        df_sampled = df_sampled.copy()
+        
+        # dropout augmentation
+        if excl_words:
+            df_sampled[text_col] = df_sampled[text_col].apply(
+                lambda t: word_dropout(t, excl_words=excl_words, drop_prob=drop_prob)
+            )
+
+        dfs.append(df_sampled)
+    df_bal = pd.concat(dfs).sample(frac=1.0, random_state=random_state).reset_index(drop=True) # shuffle
+    print(f"Counts per label BEFORE minority oversampling: {label_counts}\nCounts per label AFTER minority oversampling: {df_bal[label_col].value_counts()}")
+    return df_bal
+
+def word_dropout(text, excl_words, min_tokens=10, drop_prob=0.1):
+    """
+    Randomly drops ~drop_prob fraction of tokens, but keeps negation words.
+    Avoids altering very short texts.
+    """
+    tokens = text.split()
+    if len(tokens) <= min_tokens:
+        return text  # too short to safely drop
+
+    kept_tokens = []
+    for tok in tokens:
+        low = tok.lower().strip(",.!?;:\"'()[]")
+        if low in excl_words:
+            kept_tokens.append(tok)
+            continue
+
+        if random.random() > drop_prob:
+            kept_tokens.append(tok)
+
+    if not kept_tokens:
+        return text
+    return " ".join(kept_tokens)
+
+def prep_data(tokenizer, ft_cfg, mode='train'):
+    mode = mode.lower()
+    if mode == 'train':
+        df = pd.read_csv(ft_cfg.train_csv)
+    elif mode == 'eval':
+        df = pd.read_csv(ft_cfg.test_csv)
+    else:
+        raise ValueError("mode must be 'train' or 'eval'")
+    
+    # determine max token length if set to 'auto'
+    max_len = ft_cfg.tuner_cfg.get('max_length', None)
+    if isinstance(max_len, str) and max_len == 'auto':
+        include_percent = 0.95
+        max_token_len = get_max_token_len(df, ft_cfg.ctx, tokenizer, ft_cfg.x_col_name, ft_cfg.y_col_name, include_percent=include_percent)
+        print(f"*** Max token length set to 'auto' in Supervised Fine Tuner Config. Found a length of {max_token_len} tokens sufficient to include {include_percent * 100}% of all samples")
+        ft_cfg.tuner_cfg['max_length'] = max_token_len
+
+    # remove samples over the max token length
+    df = filter_samples_over_max_len(tokenizer, ft_cfg.ctx, df, ft_cfg.x_col_name, ft_cfg.y_col_name, max_token_len=ft_cfg.tuner_cfg.get('max_length'))
+
+    val_ds = None
+    if mode == 'train': # for training data prep, perform minority oversampling with dropout, and sample a validation set
+        # oversample the minority classes to attempt class balance
+        df = oversample_minority(df, ft_cfg.x_col_name, ft_cfg.y_col_name, excl_words=ft_cfg.keep_words)
+
+        # grab validation data from train set
+        df_val = df.sample(frac=0.1, random_state=42)
+        df.drop(df_val.index, inplace=True)
+
+        # add prompts to raw text samples
+        prompts = [build_prompt(ft_cfg.ctx, text, label) for text, label in zip(df[ft_cfg.x_col_name], df[ft_cfg.y_col_name])]
+        val_prompts = [build_prompt(ft_cfg.ctx, text, label) for text, label in zip(df_val[ft_cfg.x_col_name], df_val[ft_cfg.y_col_name])]
+        ds = Dataset.from_dict({'text': prompts}) # trl.SFTTrainer expects dicts wrapping prompt
+        val_ds = Dataset.from_dict({'text': val_prompts})
+    
+    elif mode == 'eval': # for eval we don't want oversampling, and labels are separate entry of dataset, not added in the prompt
+        prompts = [build_prompt(ft_cfg.ctx, text) for text, label in zip(df[ft_cfg.x_col_name], df[ft_cfg.y_col_name])]
+        ds = Dataset.from_dict({'text': prompts, 'labels': df[ft_cfg.y_col_name].tolist()}) # trl.SFTTrainer expects dicts wrapping prompt
+
+    print(f"TEMP DEBUG (should be approx the same): {ft_cfg.tuner_cfg.get('max_length')}, {get_max_token_len(df, ft_cfg.ctx, tokenizer, ft_cfg.x_col_name, ft_cfg.y_col_name, include_percent=1)}")
+    print(f"Filtered dataframe: {df}, First Dataset entry: {ds[0]}")
+
+
+    return ds, val_ds
