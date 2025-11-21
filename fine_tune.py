@@ -16,29 +16,41 @@ def parse_args():
         default='train',
         help='Specify to train or evaluate a previously trained model. (Default is train)'
     )
+
     parser.add_argument(
-        '-d', '--eval_model_dir',
+        '-r', '--resume',
+        action='store_true',
+        help='Resume a previously unfinished training; references `--lora_dir` to load lora for resuming'
+    )
+
+    parser.add_argument(
+        '-d', '--lora_dir',
         type=str,
         default=None,
         help='Specify the path to load the model for evaluation'
     )
 
     args = parser.parse_args()
-    if args.mode =='eval' and args.eval_model_dir is None:
+    if (args.mode =='eval' or args.resume) and args.lora_dir is None:
         raise Exception("Error: must specify path to model for evaluation if in evaluation mode.")
-    elif args.mode =='eval' and args.eval_model_dir is not None:
+    elif args.mode =='eval' and args.lora_dir is not None:
         try:
-            args.eval_model_dir = Path(args.eval_model_dir).resolve()
+            args.lora_dir = Path(args.lora_dir).resolve()
         except Exception as e:
-            print(f"Error: {args.eval_model_dir} is an invalid path\n{e}")
+            print(f"Error: {args.lora_dir} is an invalid path\n{e}")
 
     return args
 
 def main():
     args = parse_args()
-    if args.mode == 'train':
+    if args.mode == 'train':        
         from fine_tuning.initialize import tuner, tokenizer
-        tuner.train()
+
+        if args.resume:
+            tuner.train(resume_from_checkpoint=args.lora_dir)        
+        else:
+            tuner.train()
+            
         tuner.save_model(f'{ft_cfg.log_dir}/final')
         tokenizer.save_pretrained(f'{ft_cfg.log_dir}/final')
 
@@ -46,7 +58,7 @@ def main():
         from fine_tuning.utils import load_model
         from fine_tuning.eval import evaluate_split, analyze_prompt_lengths
         
-        model, tokenizer = load_model(args.eval_model_dir, device=ft_cfg.device)
+        model, tokenizer = load_model(args.lora_dir, device=ft_cfg.device)
         train_df, test_df = pd.read_csv(ft_cfg.train_csv), pd.read_csv(ft_cfg.test_csv)
         test_ds, _ = prep_data(tokenizer, ft_cfg, mode='eval')
         train_ds, _ = prep_data(tokenizer, ft_cfg, mode='train')
