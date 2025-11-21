@@ -29,3 +29,11 @@ def predict_label_from_text(model, ctx, tokenizer, text, label_tokens, device):
 
     pred_id = mask.argmax(dim=-1).item()
     return pred_id  # or convert to int(label) / decode
+
+def get_label_token_ids(tokenizer):
+    ids = []
+    for d in ["0", "1", "2"]:
+        # add a leading space to better match " Answer: 0"
+        toks = tokenizer.encode(" " + d, add_special_tokens=False)
+        ids.append(toks[-1])
+    return ids

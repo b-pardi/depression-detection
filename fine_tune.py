@@ -42,15 +42,18 @@ def main():
         tuner.save_model(f'{ft_cfg.log_dir}/final')
         tokenizer.save_pretrained(f'{ft_cfg.log_dir}/final')
 
-    if args.mode == 'eval':
+    elif args.mode == 'eval':
         from fine_tuning.utils import load_model
         from fine_tuning.eval import evaluate_split, analyze_prompt_lengths
         
         model, tokenizer = load_model(args.eval_model_dir, device=ft_cfg.device)
         train_df, test_df = pd.read_csv(ft_cfg.train_csv), pd.read_csv(ft_cfg.test_csv)
         test_ds, _ = prep_data(tokenizer, ft_cfg, mode='eval')
+        train_ds, _ = prep_data(tokenizer, ft_cfg, mode='train')
         pprint(f"Train data prompt token length statistics: {analyze_prompt_lengths(train_df, tokenizer, ft_cfg.x_col_name, ft_cfg.y_col_name, max_length=610)}")
         pprint(f"Test data prompt token length statistics: {analyze_prompt_lengths(test_df, tokenizer, ft_cfg.x_col_name, ft_cfg.y_col_name, max_length=610)}")
+        
+        pprint(f"***TEST SAMPLE:\n{test_ds[0]}\n\n***TRAIN SAMPLE:\n{train_ds[0]}")
 
         evaluate_split(
             model,
@@ -59,7 +62,8 @@ def main():
             test_ds,
             'text',
             'labels',
-            ft_cfg.device
+            ft_cfg.device,
+            view_n_model_predictions=10
         )
 
 

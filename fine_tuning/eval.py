@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.metrics import accuracy_score, f1_score, classification_report, confusion_matrix
 
 from .preprocessing import  build_prompt
+from .utils import get_label_token_ids
 
 def analyze_prompt_lengths(
     df,
@@ -37,17 +38,20 @@ def analyze_prompt_lengths(
     }
     return stats
 
-def evaluate_split(model, tokenizer, ctx, ds, text_col, label_col, device):
+def evaluate_split(model, tokenizer, ctx, ds, text_col, label_col, device, view_n_model_predictions=0):
+    '''expects samples already formatted from utils.preprocessing.prep_data(mode='eval') '''
     # token IDs for "0", "1", "2"
-    allowed_tokens = [
-        tokenizer.encode(str(i), add_special_tokens=False)[0] for i in [0, 1, 2]
-    ]
-
+    view_idxs = np.array([-1])
+    if view_n_model_predictions > 0:
+        top_k_view = 5
+        rng = np.random.default_rng(seed=42)
+        view_idxs = rng.integers(low=0, high=(len(ds)), size=view_n_model_predictions)
+    
+    allowed_tokens = get_label_token_ids(tokenizer)
     ytrue, ypred = [], []
-    for row in ds:
+    for i, row in enumerate(ds):
         # build inference prompt -> no label appended
-        text, label = row[text_col], int(row[label_col])
-        prompt = build_prompt(ctx, text, label=None)
+        prompt, label = row[text_col], int(row[label_col])
         inputs = tokenizer(prompt, return_tensors="pt").to(device)
 
         with torch.no_grad():
@@ -58,7 +62,21 @@ def evaluate_split(model, tokenizer, ctx, ds, text_col, label_col, device):
             pred_id = mask.argmax(dim=-1).item()
             yhat = int(tokenizer.decode(pred_id).strip())
 
-        ytrue.append(int(label))
+            if i in view_idxs:
+                _, top_token_ids = torch.topk(logits, top_k_view)
+                top_token_ids = top_token_ids[0].tolist()
+                top_tokens = [tokenizer.decode(tid) for tid in top_token_ids]
+                print(f"TOP-{top_k_view} token IDs: {top_token_ids}\nTOP-{top_k_view} tokens:{top_tokens}")
+
+                _, top_token_ids_masked = torch.topk(mask, top_k_view)
+                top_token_ids_masked = top_token_ids_masked[0].tolist()
+                top_tokens = [tokenizer.decode(tid) for tid in top_token_ids_masked]
+                print(f"TOP-{top_k_view} MASKED token IDs: {top_token_ids_masked}\nTOP-{top_k_view} MASKED tokens:{top_tokens}")
+
+                print(f"For the above token choices, the true label is {label}; and the prompt is:\n{prompt}\n-----------------------")
+
+
+        ytrue.append(label)
         ypred.append(yhat)
 
     acc = accuracy_score(ytrue, ypred)

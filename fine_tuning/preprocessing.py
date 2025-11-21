@@ -44,14 +44,14 @@ def filter_samples_over_max_len(tokenizer, ctx, df, text_col, label_col, max_tok
 
     return filtered_df
 
-def oversample_minority(df, text_col, label_col, drop_prob=0.1, excl_words=None, random_state=42):
+def oversample_minority(df, text_col, label_col, drop_prob=0.1, excl_words=None, random_state=42, allowed_imbal_factor=1.0):
     # sample with replacement for minority classes
     label_counts = df[label_col].value_counts()
-    max_count = label_counts.max()
+    max_count = int(label_counts.max() * allowed_imbal_factor)
 
     dfs = [df] # og samples
     for label, count in label_counts.items():
-        if count == max_count: # dont oversample the majority class
+        if count >= max_count: # dont oversample the majority class
             continue
 
         n_diff = max_count - count 
@@ -70,7 +70,7 @@ def oversample_minority(df, text_col, label_col, drop_prob=0.1, excl_words=None,
     print(f"Counts per label BEFORE minority oversampling: {label_counts}\nCounts per label AFTER minority oversampling: {df_bal[label_col].value_counts()}")
     return df_bal
 
-def word_dropout(text, excl_words, min_tokens=10, drop_prob=0.1):
+def word_dropout(text, excl_words, min_tokens=10, drop_prob=0.05):
     """
     Randomly drops ~drop_prob fraction of tokens, but keeps negation words.
     Avoids altering very short texts.
@@ -105,7 +105,7 @@ def prep_data(tokenizer, ft_cfg, mode='train'):
     # determine max token length if set to 'auto'
     max_len = ft_cfg.tuner_cfg.get('max_length', None)
     if isinstance(max_len, str) and max_len == 'auto':
-        include_percent = 0.95
+        include_percent = ft_cfg.token_len_percentile
         max_token_len = get_max_token_len(df, ft_cfg.ctx, tokenizer, ft_cfg.x_col_name, ft_cfg.y_col_name, include_percent=include_percent)
         print(f"*** Max token length set to 'auto' in Supervised Fine Tuner Config. Found a length of {max_token_len} tokens sufficient to include {include_percent * 100}% of all samples")
         ft_cfg.tuner_cfg['max_length'] = max_token_len
@@ -116,8 +116,9 @@ def prep_data(tokenizer, ft_cfg, mode='train'):
     val_ds = None
     if mode == 'train': # for training data prep, perform minority oversampling with dropout, and sample a validation set
         # oversample the minority classes to attempt class balance
-        df = oversample_minority(df, ft_cfg.x_col_name, ft_cfg.y_col_name, excl_words=ft_cfg.keep_words)
-
+        print(df[ft_cfg.y_col_name].value_counts())
+        df = oversample_minority(df, ft_cfg.x_col_name, ft_cfg.y_col_name, excl_words=ft_cfg.keep_words, allowed_imbal_factor=1.0)
+        print(df.value_counts())
         # grab validation data from train set
         df_val = df.sample(frac=0.1, random_state=42)
         df.drop(df_val.index, inplace=True)

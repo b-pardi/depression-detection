@@ -29,7 +29,7 @@ class FineTuningConfig:
     minority_sampling_drop_rate: float = 0.1
 
     # output
-    ckpt_dir_tag = 'lowerLR-fixedPrompts-smot'  # str to attach to the end of default log dir name as a personal identifier of the training run
+    ckpt_dir_tag = 'lowerLR-fixedPrompts-smot-smallerbsize'  # str to attach to the end of default log dir name as a personal identifier of the training run
     #log_dir: Path = Path(f"logs/{datetime.now().strftime('%m%d-%H%M%S')}-{ckpt_dir_tag}")
     log_dir: Path = field(init=False)
 
@@ -38,21 +38,22 @@ class FineTuningConfig:
     context_path: Path = Path("ctx/sys_msg.txt") # path to text file containing llm assignment that is used with text samples to create prompts
     device: str = field(init=False)
     seed: int = 42
+    token_len_percentile: float = 0.99
 
     # supervised fine tuning config
     tuner_cfg: Dict[str, Any] = field(default_factory=lambda: {
         'max_length': 'auto',
         'per_device_train_batch_size': 2,
         'per_device_eval_batch_size': 2,
-        'gradient_accumulation_steps': 16,
-        'learning_rate': 2e-5,
+        'gradient_accumulation_steps': 64,
+        'learning_rate': 4e-5,
         'lr_scheduler_type': "cosine",
         'warmup_ratio': 0.03,
-        'num_train_epochs': 5,
+        'num_train_epochs': 20,
         'eval_strategy': "steps",
         'logging_steps': 5,
         'eval_steps': 25,
-        'save_steps': 100,
+        'save_steps': 25,
         'bf16': True,
         'gradient_checkpointing': True,
         'save_total_limit': None,
