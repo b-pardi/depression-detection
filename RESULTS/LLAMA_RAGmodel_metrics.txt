@@ -1,0 +1,34 @@
+==================================================
+DEPRESSION DETECTION MODEL METRICS
+==================================================
+
+Total Samples: 189
+Positive Cases: 56 (29.6%)
+Negative Cases: 133 (70.4%)
+
+==================================================
+PERFORMANCE METRICS
+==================================================
+Accuracy:    0.7513
+Precision:   0.6957
+Recall:      0.2857
+Specificity: 0.9474
+F1 Score:    0.4051
+
+==================================================
+CONFUSION MATRIX
+==================================================
+True Negatives:  126
+False Positives: 7
+False Negatives: 40
+True Positives:  16
+
+==================================================
+               precision    recall  f1-score   support
+
+No Depression       0.76      0.95      0.84       133
+   Depression       0.70      0.29      0.41        56
+
+     accuracy                           0.75       189
+    macro avg       0.73      0.62      0.62       189
+ weighted avg       0.74      0.75      0.71       189

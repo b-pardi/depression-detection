@@ -18,7 +18,6 @@ Our RAG is built on authoritative clinical materials:
 - **SCID-5** (2016) - Structured Clinical Interview
 - **WHO Depression Materials** (2025) - Patient-facing descriptions
 
-See `clinical_dataset/metadata.json` for complete citations.
 
 ## Evaluation
 

@@ -1,0 +1,12 @@
+pandas
+llama-cpp-python
+
+# Data processing
+pypdf
+pdfplumber
+
+# RAG 
+langchain
+langchain_text_splitters
+sentence_transformers
+faiss
