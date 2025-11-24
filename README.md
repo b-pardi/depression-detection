@@ -6,7 +6,14 @@ Do you write code? Do you have depression??? Us too :)
 
  ## Overview
 
-This project seeks to compare the performance of different LLM approaches for detecting depression in text. We compare models fine-tuned with social media data against a RAG that fetches clinically authoritative data. We also see how these models perform with simple prompt engineering for a thorough comparison. Models fine-tuned on social media data are often used for chatbots, so we want to test our models on how well they perform on chatbot data. We use the DIAC-WOZ dataset as truly unseen data.
+Depression detection in conversational AI has traditionally relied on models fine-tuned with social media data. However, this approach may lack clinical grounding needed for reliable mental health applications. 
+
+This project compares three LLM approaches for detecting depression in dialogue:
+1. **Fine-tuned models** trained on social media data
+2. **RAG-enhanced models** using authoritative clinical materials (DSM-5-TR, ICD-11, APA guidelines)
+3. **Prompt-engineered models** with zero additional training
+
+We evaluate all models on **DIAC-WOZ**, a chatbot dialogue dataset with depression labels derived from PHQ-8 clinical assessments. This provides a rigorous test of whether clinical grounding via RAG can match or exceed the performance of domain-specific fine-tuning on real conversational data with validated clinical outcomes.
 
  ## Evaluation
 
@@ -85,6 +92,7 @@ depression-detection/
 ├── fine_tune.py                        # CLI entry point for running fine tuning on social media posts
 ├── .gitignore
 ├── LICENSE
+├── prompt_engineering.ipynb            # simple prompt engineering approach
 ├── README.md
 └── requirements.txt
 ```
@@ -95,18 +103,6 @@ depression-detection/
 - NOT for clinical diagnosis or patient care
 - NOT a substitute for professional evaluation
 - Depression diagnosis requires trained clinical professionals
-- Outputs are demonstrations of RAG technology only
-
-## References
-
-Complete citations in `clinical_dataset/metadata.json`
-
-Key sources:
-- American Psychiatric Association. (2022). *DSM-5-TR*
-- World Health Organization. (2024). *ICD-11*
-- Fiest et al. (2014). Validated case definitions for depression. *BMC Psychiatry*, 14, 289.
-
----
 
 **Crisis Resources:**
 - **US:** National Suicide Prevention Lifeline: 988
