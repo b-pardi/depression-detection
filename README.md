@@ -4,32 +4,15 @@ Do you write code? Do you have depression??? Us too :)
 
 > **Note:** This is an academic research project. Not intended for clinical use.
 
-## Overview
+ ## Overview
 
-This system combines authoritative clinical materials (DSM-5-TR, ICD-11, APA practice guidelines) with LLMs to demonstrate how RAG can support structured diagnostic assessment for depression and mood disorders. And if our hypothesis is correct, prove that the clinical RAG outperforms social media based models. 
+This project seeks to compare the performance of different LLM approaches for detecting depression in text. We compare models fine-tuned with social media data against a RAG that fetches clinically authoritative data. We also see how these models perform with simple prompt engineering for a thorough comparison. Models fine-tuned on social media data are often used for chatbots, so we want to test our models on how well they perform on chatbot data. We use the DIAC-WOZ dataset as truly unseen data.
 
-## Clinical Dataset
+ ## Evaluation
 
-Our RAG is built on authoritative clinical materials:
-
-- **DSM-5-TR** (2022) - Primary diagnostic criteria
-- **ICD-11** (2024) - International diagnostic standard
-- **APA Practice Guidelines** - Major Depressive Disorder (2010), Bipolar Disorder (2010), Depression Across Age Cohorts (2019)
-- **SCID-5** (2016) - Structured Clinical Interview
-- **WHO Depression Materials** (2025) - Patient-facing descriptions
-
-
-## Evaluation
-
-**Test Data:**
-- **DIAC-WOZ** - Clinical dialogue dataset (unseen test data)
-
-**Notebooks:**
-```bash
-jupyter notebook clinical_rag.ipynb    # RAG system
-jupyter notebook comparison.ipynb      # Comparisons
-jupyter notebook social_media.ipynb    # Social media fine-tunes model
-```
+**Unseen Test Data:**
+- **DIAC-WOZ** - Clinical dialogue dataset can be found here: https://dcapswoz.ict.usc.edu/
+- We would like to grow this list to create a benchmark for depression detection in LLMs
 
 
 ## Setup
@@ -53,7 +36,20 @@ conda activate myenv
 conda install --file requirements.txt
 ```
 
-### Fine Tuning
+## RAG
+
+**Clinical database:**
+Our RAG is built on authoritative clinical materials:
+
+- **DSM-5-TR** (2022) - Primary diagnostic criteria
+- **ICD-11** (2024) - International diagnostic standard
+- **APA Practice Guidelines** - Major Depressive Disorder (2010), Bipolar Disorder (2010), Depression Across Age Cohorts (2019)
+- **SCID-5** (2016) - Structured Clinical Interview
+- **WHO Depression Materials** (2025) - Patient-facing descriptions
+
+To run the RAG in `clinical_rag.ipynb`, you would need to create a database of clinical criteria including documents such as the DSM-5-TR. The `data_processing_scripts/create_embeddings.ipynb` notebook can be used to walk you through the embedding process.
+
+### Fine Tuning on Social Media Data
 1. Request access for and download Llama models from the [Official Meta Llama Downloads Website](https://www.llama.com/llama-downloads/). **Note:** the Llama model used for this project specifically is Llama-3.2-3B-Instruct, and further instructions pertain to that version.
 
 2. Convert Llama weights to hugging face format.
@@ -78,34 +74,14 @@ Tips:
 ## File Structure
 ```bash
 depression-detection/
-├── clinical_dataset/                   # Clinical materials for RAG
-│   ├── metadata.json                   
-│   ├── DSM-5-TR.pdf
-│   ├── APA_MDD_Guideline.pdf
-│   ├── APA_Bipolar_Guideline.pdf
-│   ├── APA_Depression_Age_Cohorts.pdf
-│   ├── ICD-11_Mental_Behavioral.pdf
-│   ├── SCID-5.pdf
-│   └── WHO_Depression_Factsheet.pdf
-├── clinical_dataset/                   # Social Media posts labelled with depression levels
-│   ├── test.csv                   
-│   ├── train.csv                   
-├── configs/                            # Configuration files
-│   ├── chat_model_config.py            
-│   ├── path_model_config.py            
-│   └── retrieval_model_config.py       
-├── ctx/                                # System prompts
-│   └── sys_msg.txt                     
-├── data/
-│   └── stuff/                          
-│       └── temp/
+.
+.
+.
 ├── fine_tuning/                        # Scripts for fine tuning on social media posts
 │   ├── __init__.py             
 │   └── chat_llm.py                      
 ├── logs/                               # Training/Evaluation outputs                         
 ├── clinical_rag.ipynb                  # Main RAG evaluation
-├── comparison.ipynb                    # Model comparisons
-├── social_media.ipynb                  # Social media analysis
 ├── fine_tune.py                        # CLI entry point for running fine tuning on social media posts
 ├── .gitignore
 ├── LICENSE
