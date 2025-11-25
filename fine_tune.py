@@ -1,10 +1,11 @@
 import argparse
 from pathlib import Path
 import pandas as pd
+import pickle
 from pprint import pprint
 
 from configs.fine_tune_config import ft_cfg
-from fine_tuning.preprocessing import prep_data
+from fine_tuning.preprocessing import prep_data, prep_diac_woz_data
 
 
 def parse_args():
@@ -12,7 +13,7 @@ def parse_args():
     parser.add_argument(
         '-m', '--mode',
         type=str,
-        choices=['train', 'eval'],
+        choices=['train', 'eval', 'diac_eval'],
         default='train',
         help='Specify to train or evaluate a previously trained model. (Default is train)'
     )
@@ -31,9 +32,9 @@ def parse_args():
     )
 
     args = parser.parse_args()
-    if (args.mode =='eval' or args.resume) and args.lora_dir is None:
+    if (args.mode =='eval' or args.mode == 'diac_eval' or args.resume) and args.lora_dir is None:
         raise Exception("Error: must specify path to model for evaluation if in evaluation mode.")
-    elif args.mode =='eval' and args.lora_dir is not None:
+    elif args.mode =='eval' or args.mode == 'diac_eval' and args.lora_dir is not None:
         try:
             args.lora_dir = Path(args.lora_dir).resolve()
         except Exception as e:
@@ -77,6 +78,43 @@ def main():
             ft_cfg.device,
             view_n_model_predictions=10
         )
+
+    elif args.mode == 'diac_eval':
+      print("Evaluating Diac Woz dataset\n")
+      from fine_tuning.utils import load_model
+      from fine_tuning.eval import evaluate_split, analyze_prompt_lengths, evaluate_split_chunked
+      
+      model, tokenizer = load_model(args.lora_dir, device=ft_cfg.device)
+
+      with open('/content/data/diac_woz/diac_woz_data.pkl', 'rb') as f:
+        daic_woz_data = pickle.load(f)
+
+      diac_ds = prep_diac_woz_data(tokenizer, ft_cfg, daic_woz_data)
+
+      pprint(f"***TEST SAMPLE:\n{diac_ds[0]}\n\n")
+
+      #evaluate_split(
+      #      model,
+      #      tokenizer,
+      #      ft_cfg.ctx,
+      #      diac_ds,
+      #      'text',
+      #      'labels',
+      #      ft_cfg.device,
+      #      view_n_model_predictions=10
+      #  )
+      ytrue, ypred = evaluate_split_chunked(
+            model,
+            tokenizer,
+            ft_cfg.ctx,          # your clinical context prompt
+            diac_ds_raw,
+            "conversations",     # text_col = raw transcript
+            "mdd_binary",        # label_col
+            ft_cfg.device,
+            max_chunk_tokens=2048,
+            overlap_tokens=128,
+            view_n_model_predictions=5,  # or 0 if you don't want debug
+)
 
 
 if __name__ == '__main__':

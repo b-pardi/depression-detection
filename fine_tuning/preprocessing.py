@@ -8,7 +8,7 @@ from sklearn.metrics import accuracy_score, f1_score, classification_report, con
 from datasets import Dataset
 
 def build_prompt(ctx, text, label=None):
-    prompt = f"{ctx}Post:\n{text}\n\nAnswer:"
+    prompt = f"{ctx}Transcript:\n{text}\n\nAnswer:"
     if label is not None: # label included when training
         prompt += " " + str(label)
     return prompt
@@ -138,3 +138,104 @@ def prep_data(tokenizer, ft_cfg, mode='train'):
 
 
     return ds, val_ds
+
+def prep_diac_woz_data(tokenizer, ft_cfg, diac_woz_data):
+  # determine max token length if set to 'auto'
+    max_len = ft_cfg.tuner_cfg.get('max_length', None)
+    if isinstance(max_len, str) and max_len == 'auto':
+        include_percent = ft_cfg.token_len_percentile
+        max_token_len = get_max_token_len(diac_woz_data, ft_cfg.ctx, tokenizer, ft_cfg.x_col_name, ft_cfg.y_col_name, include_percent=include_percent)
+        print(f"*** Max token length set to 'auto' in Supervised Fine Tuner Config. Found a length of {max_token_len} tokens sufficient to include {include_percent * 100}% of all samples")
+        ft_cfg.tuner_cfg['max_length'] = max_token_len
+
+
+def prep_diac_woz_data(tokenizer, ft_cfg, diac_woz_data):
+    """
+    Prepare DAIC-WOZ data (loaded from pickle) into a HuggingFace Dataset,
+    analogous to prep_data(..., mode='eval').
+
+    Expects:
+      - ft_cfg.x_col_name: name of the text field in diac_woz_data (e.g. "conversations")
+      - ft_cfg.y_col_name: name of the label field (e.g. "mdd_binary")
+      - ft_cfg.ctx: prompt context string
+    """
+
+    # 1) Normalize diac_woz_data into a pandas DataFrame
+    if isinstance(diac_woz_data, pd.DataFrame):
+        df = diac_woz_data.copy()
+    elif isinstance(diac_woz_data, dict):
+        # Only pull the columns we actually need (text + label)
+        df = pd.DataFrame({
+            ft_cfg.diac_x_col_name: diac_woz_data[ft_cfg.diac_x_col_name],
+            ft_cfg.diac_y_col_name: diac_woz_data[ft_cfg.diac_y_col_name],
+        })
+    else:
+        # You can adjust this depending on how your pickle is structured
+        raise TypeError(
+            f"diac_woz_data must be a dict or DataFrame, got {type(diac_woz_data)}"
+        )
+
+    # Make sure there are no missing text/label rows
+    df = df.dropna(subset=[ft_cfg.diac_x_col_name, ft_cfg.diac_y_col_name]).reset_index(drop=True)
+
+    # 2) Determine max token length if set to 'auto'
+    #max_len = ft_cfg.tuner_cfg.get('max_length', None)
+    #if isinstance(max_len, str) and max_len == 'auto':
+    #    include_percent = ft_cfg.token_len_percentile
+    #    max_token_len = get_max_token_len(
+    #        df,
+    #        ft_cfg.ctx,
+    #        tokenizer,
+    #        ft_cfg.diac_x_col_name,
+    #        ft_cfg.diac_y_col_name,
+    #       include_percent=include_percent
+    #    )
+    #    
+    #    # Giving an upper bound to the max_token_length
+    #    max_token_len = min(max_token_len, 2048)  # or 1536 / 1024
+    #    
+    #    print(
+    #        f"*** Max token length set to 'auto' in Supervised Fine Tuner Config. "
+    #        f"Found a length of {max_token_len} tokens sufficient to include "
+    #       f"{include_percent * 100}% of all samples"
+    #    )
+    #    ft_cfg.tuner_cfg['max_length'] = max_token_len
+    #
+    ## 3) Remove samples over the max token length
+    #df = filter_samples_over_max_len(
+    #    tokenizer,
+    #    ft_cfg.ctx,
+    #    df,
+    #    ft_cfg.diac_x_col_name,
+    #    ft_cfg.diac_y_col_name,
+    #    max_token_len=ft_cfg.tuner_cfg.get('max_length')
+    #)
+    #
+    ## 4) Build prompts (NO label appended in the prompt, like eval mode)
+    #prompts = [
+    #    build_prompt(ft_cfg.ctx, text)
+    #    for text in df[ft_cfg.diac_x_col_name]
+    #]
+
+    # 5) Create HuggingFace Dataset: text + labels
+    #ds = Dataset.from_dict({
+    #    'text': prompts,
+    #    'labels': df[ft_cfg.diac_y_col_name].astype(int).tolist()
+    #})
+    
+    # 5.A) Create HF Dataset with raw text for iterative chunking later
+    ds = Dataset.from_dict({
+        ft_cfg.diac_x_col_name: df[ft_cfg.diac_x_col_name].tolist(),   # raw transcripts
+        ft_cfg.diac_y_col_name: df[ft_cfg.diac_y_col_name].astype(int).tolist(),  # labels
+    })
+
+    # 6) Optional debug info (mirroring your existing prep_data debug)
+    #print(
+    #    f"TEMP DEBUG (should be approx the same): "
+    #    f"{ft_cfg.tuner_cfg.get('max_length')}, "
+    #    f"{get_max_token_len(df, ft_cfg.ctx, tokenizer, ft_cfg.x_col_name, ft_cfg.y_col_name, include_percent=1)}"
+    #)
+    print(f"Filtered DAIC-WOZ dataframe (head):\n{df.head()}")
+    print(f"First Dataset entry: {ds[0]}")
+
+    return ds
